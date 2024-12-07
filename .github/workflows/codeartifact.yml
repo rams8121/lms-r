@@ -1,0 +1,38 @@
+name: Authenticate with AWS CodeArtifact
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  authenticate:
+    runs-on: ubuntu-latest
+
+    steps:
+    # Step 1: Checkout the code
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    # Step 2: Configure AWS credentials
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v3
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: ${{ secrets.AWS_REGION }}
+
+    # Step 3: Generate CodeArtifact token
+    - name: Generate CodeArtifact token
+      id: token
+      run: |
+        TOKEN=$(aws codeartifact get-authorization-token \
+          --domain ${{ secrets.CODEARTIFACT_DOMAIN }} \
+          --domain-owner ${{ secrets.CODEARTIFACT_ACCOUNT_ID }} \
+          --query authorizationToken --output text)
+        echo "token=${TOKEN}" >> $GITHUB_ENV
+
+    # Step 4: Authenticate with CodeArtifact
+    - name: Authenticate with CodeArtifact
+      run: |
+        npm config set //${{ secrets.CODEARTIFACT_DOMAIN }}-<region>.d.codeartifact.amazonaws.com/npm/<repo-name>/:_authToken=${{ env.token }}
